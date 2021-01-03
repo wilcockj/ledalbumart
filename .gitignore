@@ -2,3 +2,5 @@ venv/
 *.jpg
 *.png
 *~
+/.cache-2chainzbear
+/config.cfg
