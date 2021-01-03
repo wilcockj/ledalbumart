@@ -17,6 +17,7 @@ import spotipy.oauth2 as oauth2
 import requests
 import time
 from loguru import logger
+import colorsys
 
 numberofpixels = 100
 
@@ -48,8 +49,16 @@ def initspotipy():
 
 def getspotifyart(spotifyObject):
     track = spotifyObject.current_user_playing_track()
+    playback = spotifyObject.current_playback()
     # print(json.dumps(track, sort_keys=True, indent=4))
-    artist = track["item"]["artists"][0]["name"]
+    try:
+        artist = track["item"]["artists"][0]["name"]
+    except TypeError:
+        logger.debug("Not currently listening to anything")
+        return ""
+    if not playback["is_playing"]:
+        logger.debug("Not currently listening to anything")
+        return ""
     song = track["item"]["name"]
     albumarturl = track["item"]["album"]["images"][0]["url"]
     if artist != "":
@@ -114,20 +123,54 @@ def blownup(colorarray):
     # picture
 
 
+def hsv2rgb(h, s, v):
+    return tuple(round(i * 255) for i in colorsys.hsv_to_rgb(h, s, v))
+
+
+def showpause():
+    width = height = int(numberofpixels ** 0.5)
+    colorarray = np.zeros((height, width, 3), dtype=np.uint8)
+    col = 0
+    row = 0
+    counter = 0
+    for rowcount, line in enumerate(colorarray):
+        for colcount, pixel in enumerate(line):
+            if (colcount % 10 == 3 or colcount % 10 == 6) and (
+                rowcount > 1 and rowcount < 8
+            ):
+                # set color piece of rainbow in relation to
+                # rowcount 2 = 0
+                # rowcount 8 = 1
+                # rowcount - 2 * 1/8?
+                test_color = colorsys.hsv_to_rgb((rowcount - 2) * 1 / 7, 1, 1)
+                fixedrgb = hsv2rgb((rowcount - 2) * 1 / 7, 1, 1)
+                colorarray[rowcount, colcount] = fixedrgb
+
+    # need to do hsv color in order to get rainbow
+    # send paused image to led array
+    # each row should have same color
+    logger.debug("Returning Pause picture")
+    return colorarray
+
+
 # print(colorarray)
 spotifyobject = initspotipy()
 
 while True:
     albumarturl = getspotifyart(spotifyobject)
     # could download into directory
-    savetemp(albumarturl)
-    onlyfiles = makeslices("temp.jpg")
-    colorarray = getaverageslices(onlyfiles)
+    if albumarturl != "":
+        savetemp(albumarturl)
+        onlyfiles = makeslices("temp.jpg")
+        colorarray = getaverageslices(onlyfiles)
+
+    else:
+        colorarray = showpause()
     tenbyten = Image.fromarray(colorarray).save("10x10.png")
     img = Image.open("10x10.png")
     # optional / debug maybe add as commandline option
     blownup(colorarray)
-    time.sleep(5)
+    # time.sleep(5)
     logger.debug("Looping in check album art loop")
 """
 for row in colorarray:
