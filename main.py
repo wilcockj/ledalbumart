@@ -31,10 +31,10 @@ numberofpixels = 100
 
 
 def initspotipy():
-    username = "2chainzbear"
     scope = "user-read-private user-read-playback-state user-modify-playback-state"
     config = configparser.ConfigParser()
     config.read("config.cfg")
+    username = config.get("SPOTIFY", "USERNAME")
     client_id = config.get("SPOTIFY", "CLIENT_ID")
     client_secret = config.get("SPOTIFY", "CLIENT_SECRET")
     redirect_uri = config.get("SPOTIFY", "REDIRECT_URI")
