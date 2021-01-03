@@ -39,12 +39,15 @@ def initspotipy():
     client_id = config.get("SPOTIFY", "CLIENT_ID")
     client_secret = config.get("SPOTIFY", "CLIENT_SECRET")
     redirect_uri = config.get("SPOTIFY", "REDIRECT_URI")
+    os.environ["SPOTIPY_CLIENT_ID"] = client_id
+    os.environ["SPOTIPY_CLIENT_SECRET"] = client_secret
+    os.environ["SPOTIPY_REDIRECT_URI"] = redirect_uri
     token = util.prompt_for_user_token(
         username, scope, client_id, client_secret, redirect_uri
     )
     # Create Spotify object
     spotifyObject = spotipy.Spotify(auth=token)
-    return spotifyObject
+    return spotifyObject, token
 
 
 def getspotifyart(spotifyObject):
@@ -60,7 +63,11 @@ def getspotifyart(spotifyObject):
         logger.debug("Not currently listening to anything")
         return ""
     song = track["item"]["name"]
-    albumarturl = track["item"]["album"]["images"][0]["url"]
+    try:
+        albumarturl = track["item"]["album"]["images"][0]["url"]
+    except IndexError:
+        logger.debug("Unable to get album art url")
+        return ""
     if artist != "":
         logger.info("Currently playing " + artist + " - " + song)
     return albumarturl
@@ -93,8 +100,11 @@ def getaverageslices(onlyfiles):
     return colorarray
 
 
-def savetemp(albumarturl):
+def savetemp(albumarturl, lasturl):
     logger.info(albumarturl)
+    if albumarturl == lasturl:
+        logger.debug("Same song skipping download")
+        return
     image = requests.get(albumarturl)
     with open("temp.jpg", "wb") as f:
         f.write(image.content)
@@ -154,13 +164,18 @@ def showpause():
 
 
 # print(colorarray)
-spotifyobject = initspotipy()
-
+spotifyobject, token = initspotipy()
+lasturl = ""
 while True:
-    albumarturl = getspotifyart(spotifyobject)
+    try:
+        albumarturl = getspotifyart(spotifyobject)
+    except spotipy.exceptions.SpotifyException:
+        spotifyobject = spotipy.Spotify(auth=token)
+        albumarturl = getspotifyart(spotifyobject)
     # could download into directory
     if albumarturl != "":
-        savetemp(albumarturl)
+        savetemp(albumarturl, lasturl)
+        lasturl = albumarturl
         onlyfiles = makeslices("temp.jpg")
         colorarray = getaverageslices(onlyfiles)
 
