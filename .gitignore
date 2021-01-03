@@ -2,5 +2,5 @@ venv/
 *.jpg
 *.png
 *~
-/.cache
+/.cache*
 /config.cfg
