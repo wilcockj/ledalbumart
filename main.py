@@ -20,6 +20,9 @@ from loguru import logger
 
 numberofpixels = 100
 
+# image slicing code breaks when there are too many pixels?
+# 64x64 ie 4096 pixels seemed to break
+
 
 def initspotipy():
     username = "2chainzbear"
@@ -40,7 +43,6 @@ def initspotipy():
 def getspotifyart(spotifyObject):
     track = spotifyObject.current_user_playing_track()
     # print(json.dumps(track, sort_keys=True, indent=4))
-    print()
     artist = track["item"]["artists"][0]["name"]
     song = track["item"]["name"]
     albumarturl = track["item"]["album"]["images"][0]["url"]
@@ -57,7 +59,6 @@ def makeslices(filename):
 
 def getaverageslices(onlyfiles):
     width = height = int(numberofpixels ** 0.5)
-
     colorarray = np.zeros((height, width, 3), dtype=np.uint8)
     col = 0
     row = 0
@@ -85,7 +86,7 @@ def savetemp(albumarturl):
 
 
 def blownup(colorarray):
-    pictureside = 4000
+    pictureside = 1000
     blownarray = np.zeros((pictureside, pictureside, 3), dtype=np.uint8)
     # row,col
     # if 0,0 we want from 0,0 to 100,100 to be that color
@@ -102,6 +103,7 @@ def blownup(colorarray):
                 ):
                     blownarray[x, y] = pixel
     enlarged = Image.fromarray(blownarray).save("englarged.png")
+    logger.info("Finished saving blownup image")
     # reverse slicing in order to make big version of low info
     # picture
 
@@ -117,6 +119,7 @@ while True:
     colorarray = getaverageslices(onlyfiles)
     tenbyten = Image.fromarray(colorarray).save("10x10.png")
     img = Image.open("10x10.png")
+    # optional / debug maybe add as commandline option
     blownup(colorarray)
     time.sleep(5)
     logger.debug("Looping in check album art loop")
