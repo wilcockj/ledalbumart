@@ -16,6 +16,7 @@ import configparser
 import spotipy.oauth2 as oauth2
 import requests
 import time
+from loguru import logger
 
 numberofpixels = 100
 
@@ -44,13 +45,13 @@ def getspotifyart(spotifyObject):
     song = track["item"]["name"]
     albumarturl = track["item"]["album"]["images"][0]["url"]
     if artist != "":
-        print("Currently playing " + artist + " - " + song)
+        logger.info("Currently playing " + artist + " - " + song)
     return albumarturl
 
 
 def makeslices(filename):
     files = image_slicer.slice(filename, numberofpixels, save=False)
-    image_slicer.save_tiles(files, directory="./slices", prefix="slice", format="png")
+    # image_slicer.save_tiles(files, directory="./slices", prefix="slice", format="png")
     return files
 
 
@@ -70,36 +71,37 @@ def getaverageslices(onlyfiles):
         # print(avg_color)
         colorarray[row, col] = avg_color
         col += 1
-        if col == 10:
+        if col == height:
             row += 1
             col = 0
     return colorarray
 
 
 def savetemp(albumarturl):
-    print(albumarturl)
+    logger.info(albumarturl)
     image = requests.get(albumarturl)
     with open("temp.jpg", "wb") as f:
         f.write(image.content)
 
 
 def blownup(colorarray):
-    blownarray = np.zeros((1000, 1000, 3), dtype=np.uint8)
+    pictureside = 4000
+    blownarray = np.zeros((pictureside, pictureside, 3), dtype=np.uint8)
     # row,col
     # if 0,0 we want from 0,0 to 100,100 to be that color
     # if 1,0 we from 100,0 to 200,100 to be that color
     for rowcount, row in enumerate(colorarray):
         for colcount, pixel in enumerate(row):
             for x in range(
-                int(1000 / len(row) * rowcount),
-                int(1000 / len(row) * rowcount + (1000 / len(row))),
+                int(pictureside / len(row) * rowcount),
+                int(pictureside / len(row) * rowcount + (pictureside / len(row))),
             ):
                 for y in range(
-                    int(1000 / len(row) * colcount),
-                    int(1000 / len(row) * colcount + (1000 / len(row))),
+                    int(pictureside / len(row) * colcount),
+                    int(pictureside / len(row) * colcount + (pictureside / len(row))),
                 ):
                     blownarray[x, y] = pixel
-    enlarged = Image.fromarray(blownarray).save('englarged.png')
+    enlarged = Image.fromarray(blownarray).save("englarged.png")
     # reverse slicing in order to make big version of low info
     # picture
 
@@ -117,6 +119,7 @@ while True:
     img = Image.open("10x10.png")
     blownup(colorarray)
     time.sleep(5)
+    logger.debug("Looping in check album art loop")
 """
 for row in colorarray:
     for pixel in row:
