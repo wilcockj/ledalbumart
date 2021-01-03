@@ -1,0 +1,3 @@
+image-slicer==2.1.1
+numpy==1.19.3
+Pillow==7.2.0
