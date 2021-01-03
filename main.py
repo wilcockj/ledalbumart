@@ -42,7 +42,7 @@ def getspotifyart(spotifyObject):
     print()
     artist = track["item"]["artists"][0]["name"]
     song = track["item"]["name"]
-    albumarturl = track["item"]["album"]["images"][-1]["url"]
+    albumarturl = track["item"]["album"]["images"][0]["url"]
     if artist != "":
         print("Currently playing " + artist + " - " + song)
     return albumarturl
@@ -50,7 +50,7 @@ def getspotifyart(spotifyObject):
 
 def makeslices(filename):
     files = image_slicer.slice(filename, numberofpixels, save=False)
-    # image_slicer.save_tiles(files, directory="./slices", prefix="slice", format="png")
+    image_slicer.save_tiles(files, directory="./slices", prefix="slice", format="png")
     return files
 
 
@@ -60,7 +60,9 @@ def getaverageslices(onlyfiles):
     colorarray = np.zeros((height, width, 3), dtype=np.uint8)
     col = 0
     row = 0
+    counter = 0
     for file in onlyfiles:
+        counter += 1
         data = np.asarray(file.image)
         # print(data)
         avg_of_row = np.average(data, axis=0)
@@ -91,7 +93,6 @@ while True:
     onlyfiles = makeslices("temp.jpg")
     colorarray = getaverageslices(onlyfiles)
     tenbyten = Image.fromarray(colorarray)
-    tenbyten.show()
     time.sleep(5)
 """
 for row in colorarray:
