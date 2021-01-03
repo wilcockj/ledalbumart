@@ -23,6 +23,9 @@ numberofpixels = 100
 # image slicing code breaks when there are too many pixels?
 # 64x64 ie 4096 pixels seemed to break
 
+# if can avoid saving the album art image would be ideal
+#for this look at returning in save temp function
+
 
 def initspotipy():
     username = "2chainzbear"
