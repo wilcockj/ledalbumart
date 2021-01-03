@@ -88,11 +88,11 @@ while True:
     albumarturl = getspotifyart(spotifyobject)
     # could download into directory
     savetemp(albumarturl)
+    onlyfiles = makeslices("temp.jpg")
+    colorarray = getaverageslices(onlyfiles)
+    tenbyten = Image.fromarray(colorarray)
+    tenbyten.show()
     time.sleep(5)
-
-
-# onlyfiles = makeslices("kanye.jpg")
-# colorarray = getaverageslices(onlyfiles)
 """
 for row in colorarray:
     for pixel in row:
@@ -101,7 +101,7 @@ for row in colorarray:
 """
 
 # for led dont need to save array will be enough to make image
-Image.fromarray(colorarray).show()
+
 # deletes the files made of the slices
 """
 onlyfiles = [f for f in listdir("slices") if isfile(join("slices", f))]
