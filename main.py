@@ -83,6 +83,27 @@ def savetemp(albumarturl):
         f.write(image.content)
 
 
+def blownup(colorarray):
+    blownarray = np.zeros((1000, 1000, 3), dtype=np.uint8)
+    # row,col
+    # if 0,0 we want from 0,0 to 100,100 to be that color
+    # if 1,0 we from 100,0 to 200,100 to be that color
+    for rowcount, row in enumerate(colorarray):
+        for colcount, pixel in enumerate(row):
+            for x in range(
+                int(1000 / len(row) * rowcount),
+                int(1000 / len(row) * rowcount + (1000 / len(row))),
+            ):
+                for y in range(
+                    int(1000 / len(row) * colcount),
+                    int(1000 / len(row) * colcount + (1000 / len(row))),
+                ):
+                    blownarray[x, y] = pixel
+    enlarged = Image.fromarray(blownarray).save('englarged.png')
+    # reverse slicing in order to make big version of low info
+    # picture
+
+
 # print(colorarray)
 spotifyobject = initspotipy()
 
@@ -92,7 +113,9 @@ while True:
     savetemp(albumarturl)
     onlyfiles = makeslices("temp.jpg")
     colorarray = getaverageslices(onlyfiles)
-    tenbyten = Image.fromarray(colorarray)
+    tenbyten = Image.fromarray(colorarray).save("10x10.png")
+    img = Image.open("10x10.png")
+    blownup(colorarray)
     time.sleep(5)
 """
 for row in colorarray:
