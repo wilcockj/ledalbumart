@@ -20,7 +20,8 @@ from loguru import logger
 import colorsys
 
 numberofpixels = 100
-logger.add("log.log", rotation="1 week", level="INFO")
+sys.stdout.reconfigure(encoding="utf-8")
+logger.add("log.log", rotation="1 week", level="INFO", encoding="utf-8")
 
 # image slicing code breaks when there are too many pixels?
 # 64x64 ie 4096 pixels seemed to break
@@ -169,6 +170,7 @@ if __name__ == "__main__":
     spotifyobject = initspotipy()
     lasturl = ""
     while True:
+        start_time = time.time()
         try:
             albumarturl = getspotifyart(spotifyobject)
             # for testing
@@ -184,14 +186,18 @@ if __name__ == "__main__":
             colorarray = getaverageslices(onlyfiles)
             if lasturl != albumarturl:
                 blownup(colorarray)
+            else:
+                logger.debug("Skipping creation of enlarged picture")
             lasturl = albumarturl
         else:
             colorarray = showpause()
-            blownup(colorarray)
+            if lasturl != albumarturl:
+                blownup(colorarray)
+            lasturl = albumarturl
         tenbyten = Image.fromarray(colorarray).save("10x10.png")
         img = Image.open("10x10.png")
         # optional / debug maybe add as commandline option
         # do check for last url here
-
-        time.sleep(5)
+        # add log for how long loop took
+        logger.debug(f"Loop took {round(time.time() - start_time,2)}s")
         logger.debug("Looping in check album art loop")
