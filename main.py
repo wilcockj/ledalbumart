@@ -20,6 +20,7 @@ from loguru import logger
 import colorsys
 
 numberofpixels = 100
+logger.add("log.log", rotation="1 week", level="WARNING")
 
 # image slicing code breaks when there are too many pixels?
 # 64x64 ie 4096 pixels seemed to break
@@ -105,13 +106,15 @@ def savetemp(albumarturl, lasturl):
     if albumarturl == lasturl:
         logger.debug("Same song skipping download")
         return
+    logger.debug(f"Downloading image from {albumarturl}")
     image = requests.get(albumarturl)
     with open("temp.jpg", "wb") as f:
         f.write(image.content)
+    logger.debug("Image download complete")
 
 
 def blownup(colorarray):
-    pictureside = 1000
+    pictureside = 600
     blownarray = np.zeros((pictureside, pictureside, 3), dtype=np.uint8)
     # row,col
     # if 0,0 we want from 0,0 to 100,100 to be that color
@@ -151,7 +154,7 @@ def showpause():
                 # set color piece of rainbow in relation to
                 # rowcount 2 = 0
                 # rowcount 8 = 1
-                # rowcount - 2 * 1/8?
+                # rowcount - 2 * 1/7?
                 test_color = colorsys.hsv_to_rgb((rowcount - 2) * 1 / 7, 1, 1)
                 fixedrgb = hsv2rgb((rowcount - 2) * 1 / 7, 1, 1)
                 colorarray[rowcount, colcount] = fixedrgb
@@ -169,7 +172,10 @@ lasturl = ""
 while True:
     try:
         albumarturl = getspotifyart(spotifyobject)
-    except spotipy.exceptions.SpotifyException:
+        # for testing
+        # raise spotipy.exceptions.SpotifyException(401, 401, "ouch!")
+    except (spotipy.exceptions.SpotifyException, requests.exceptions.HTTPError):
+        logger.warning("Refreshing token")
         spotifyobject = spotipy.Spotify(auth=token)
         albumarturl = getspotifyart(spotifyobject)
     # could download into directory
