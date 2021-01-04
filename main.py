@@ -48,7 +48,7 @@ def initspotipy():
     )
     # Create Spotify object
     spotifyObject = spotipy.Spotify(auth=token)
-    return spotifyObject, token
+    return spotifyObject
 
 
 def getspotifyart(spotifyObject):
@@ -167,7 +167,7 @@ def showpause():
 
 
 # print(colorarray)
-spotifyobject, token = initspotipy()
+spotifyobject = initspotipy()
 lasturl = ""
 while True:
     try:
@@ -176,7 +176,7 @@ while True:
         # raise spotipy.exceptions.SpotifyException(401, 401, "ouch!")
     except (spotipy.exceptions.SpotifyException, requests.exceptions.HTTPError):
         logger.warning("Refreshing token")
-        spotifyobject = spotipy.Spotify(auth=token)
+        spotifyobject = initspotipy()
         albumarturl = getspotifyart(spotifyobject)
     # could download into directory
     if albumarturl != "":
@@ -190,8 +190,9 @@ while True:
     tenbyten = Image.fromarray(colorarray).save("10x10.png")
     img = Image.open("10x10.png")
     # optional / debug maybe add as commandline option
+    # do check for last url here
     blownup(colorarray)
-    # time.sleep(5)
+    time.sleep(5)
     logger.debug("Looping in check album art loop")
 """
 for row in colorarray:
