@@ -61,7 +61,7 @@ def getspotifyart(spotifyObject):
         logger.debug("Not currently listening to anything")
         return ""
     if not playback["is_playing"]:
-        logger.debug("Not currently listening to anything")
+        logger.debug("Not playing anything on spotify")
         return ""
     song = track["item"]["name"]
     try:
