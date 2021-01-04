@@ -20,7 +20,7 @@ from loguru import logger
 import colorsys
 
 numberofpixels = 100
-logger.add("log.log", rotation="1 week", level="WARNING")
+logger.add("log.log", rotation="1 week", level="INFO")
 
 # image slicing code breaks when there are too many pixels?
 # 64x64 ie 4096 pixels seemed to break
@@ -102,7 +102,6 @@ def getaverageslices(onlyfiles):
 
 
 def savetemp(albumarturl, lasturl):
-    logger.info(albumarturl)
     if albumarturl == lasturl:
         logger.debug("Same song skipping download")
         return
@@ -167,33 +166,36 @@ def showpause():
 
 
 # print(colorarray)
-spotifyobject = initspotipy()
-lasturl = ""
-while True:
-    try:
-        albumarturl = getspotifyart(spotifyobject)
-        # for testing
-        # raise spotipy.exceptions.SpotifyException(401, 401, "ouch!")
-    except (spotipy.exceptions.SpotifyException, requests.exceptions.HTTPError):
-        logger.warning("Refreshing token")
-        spotifyobject = initspotipy()
-        albumarturl = getspotifyart(spotifyobject)
-    # could download into directory
-    if albumarturl != "":
-        savetemp(albumarturl, lasturl)
-        lasturl = albumarturl
-        onlyfiles = makeslices("temp.jpg")
-        colorarray = getaverageslices(onlyfiles)
+if __name__ == "__main__":
+    spotifyobject = initspotipy()
+    lasturl = ""
+    while True:
+        try:
+            albumarturl = getspotifyart(spotifyobject)
+            # for testing
+            # raise spotipy.exceptions.SpotifyException(401, 401, "ouch!")
+        except (spotipy.exceptions.SpotifyException, requests.exceptions.HTTPError):
+            logger.warning("Refreshing token")
+            spotifyobject = initspotipy()
+            albumarturl = getspotifyart(spotifyobject)
+        # could download into directory
+        if albumarturl != "":
+            savetemp(albumarturl, lasturl)
+            onlyfiles = makeslices("temp.jpg")
+            colorarray = getaverageslices(onlyfiles)
+            if lasturl != albumarturl:
+                blownup(colorarray)
+            lasturl = albumarturl
+        else:
+            colorarray = showpause()
+            blownup(colorarray)
+        tenbyten = Image.fromarray(colorarray).save("10x10.png")
+        img = Image.open("10x10.png")
+        # optional / debug maybe add as commandline option
+        # do check for last url here
 
-    else:
-        colorarray = showpause()
-    tenbyten = Image.fromarray(colorarray).save("10x10.png")
-    img = Image.open("10x10.png")
-    # optional / debug maybe add as commandline option
-    # do check for last url here
-    blownup(colorarray)
-    time.sleep(5)
-    logger.debug("Looping in check album art loop")
+        time.sleep(5)
+        logger.debug("Looping in check album art loop")
 """
 for row in colorarray:
     for pixel in row:
