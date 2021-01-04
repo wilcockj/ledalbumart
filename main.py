@@ -154,7 +154,6 @@ def showpause():
                 # rowcount 2 = 0
                 # rowcount 8 = 1
                 # rowcount - 2 * 1/7?
-                test_color = colorsys.hsv_to_rgb((rowcount - 2) * 1 / 7, 1, 1)
                 fixedrgb = hsv2rgb((rowcount - 2) * 1 / 7, 1, 1)
                 colorarray[rowcount, colcount] = fixedrgb
 
@@ -196,20 +195,3 @@ if __name__ == "__main__":
 
         time.sleep(5)
         logger.debug("Looping in check album art loop")
-"""
-for row in colorarray:
-    for pixel in row:
-        # could tell the led array here
-        #print(pixel)
-"""
-
-# for led dont need to save array will be enough to make image
-
-# deletes the files made of the slices
-"""
-onlyfiles = [f for f in listdir("slices") if isfile(join("slices", f))]
-for x in onlyfiles:
-    delfile = join("slices", x)
-    # print(f"Deleted file {delfile}")
-    remove(delfile)
-"""
