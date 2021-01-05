@@ -176,6 +176,7 @@ if __name__ == "__main__":
             # for testing
             # raise spotipy.exceptions.SpotifyException(401, 401, "ouch!")
         except (spotipy.exceptions.SpotifyException, requests.exceptions.HTTPError):
+            # catches exception when spotify token needs to be refreshed
             logger.warning("Refreshing token")
             spotifyobject = initspotipy()
             albumarturl = getspotifyart(spotifyobject)
@@ -188,12 +189,11 @@ if __name__ == "__main__":
                 blownup(colorarray)
             else:
                 logger.debug("Skipping creation of enlarged picture")
-            lasturl = albumarturl
         else:
             colorarray = showpause()
             if lasturl != albumarturl:
                 blownup(colorarray)
-            lasturl = albumarturl
+        lasturl = albumarturl
         tenbyten = Image.fromarray(colorarray).save("10x10.png")
         img = Image.open("10x10.png")
         # optional / debug maybe add as commandline option
