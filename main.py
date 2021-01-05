@@ -168,7 +168,7 @@ def showpause():
 # print(colorarray)
 if __name__ == "__main__":
     spotifyobject = initspotipy()
-    lasturl = ""
+    lasturl = "start"
     while True:
         start_time = time.time()
         try:
