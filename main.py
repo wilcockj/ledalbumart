@@ -33,7 +33,7 @@ logger.add("log.log", rotation="1 week", level="INFO", encoding="utf-8")
 # for this look at returning in save temp function
 
 # TODO
-# add progress bar on bottom, in red
+# Make progress bar opposite color of average color of album art in order to contrast
 
 
 def initspotipy():
@@ -116,8 +116,16 @@ def getaverageslices(onlyfiles, progress):
         if col == height:
             row += 1
             col = 0
+    coloraverage = [0, 0, 0]
+    for x in colorarray:
+        for y in x:
+            coloraverage[0] += y[0]
+            coloraverage[1] += y[1]
+            coloraverage[2] += y[2]
+    coloraverage = [int(x / (width * height)) for x in coloraverage]
     for x in range(int(width * progress)):
-        colorarray[width - 1, x] = (255, 0, 0)
+        # here should be instead opposite color of average of whole image
+        colorarray[width - 1, x] = complementarycolor(coloraverage)
     return colorarray
 
 
@@ -159,6 +167,10 @@ def hsv2rgb(h, s, v):
     return tuple(round(i * 255) for i in colorsys.hsv_to_rgb(h, s, v))
 
 
+def complementarycolor(rgbcolor):
+    return [255 - x for x in rgbcolor]
+
+
 def showpause(progress):
     width = height = int(numberofpixels ** 0.5)
     colorarray = np.zeros((height, width, 3), dtype=np.uint8)
@@ -176,8 +188,15 @@ def showpause(progress):
                 # rowcount - 2 * 1/7?
                 fixedrgb = hsv2rgb((rowcount - 2) * 1 / 7, 1, 1)
                 colorarray[rowcount, colcount] = fixedrgb
+    coloraverage = [0, 0, 0]
+    for x in colorarray:
+        for y in x:
+            coloraverage[0] += y[0]
+            coloraverage[1] += y[1]
+            coloraverage[2] += y[2]
+    coloraverage = [int(x / (width * height)) for x in coloraverage]
     for x in range(int(width * progress)):
-        colorarray[width - 1, x] = (255, 0, 0)
+        colorarray[width - 1, x] = complementarycolor(coloraverage)
     # need to do hsv color in order to get rainbow
     # send paused image to led array
     # each row should have same color
