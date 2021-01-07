@@ -69,6 +69,8 @@ def getspotifyart(spotifyObject):
     #'progress_ms' for how far in song
     # print(json.dumps(track, sort_keys=True, indent=4))
     try:
+        if not track["item"]:
+            return "", progress
         artist = track["item"]["artists"][0]["name"]
         trackduration = spotifyObject.audio_features(playback["item"]["id"])[0][
             "duration_ms"
@@ -104,6 +106,7 @@ def getspotifyart(spotifyObject):
                 progress = round_down(
                     1 / (track["item"]["duration_ms"] / track["progress_ms"]), 1
                 )
+                logger.debug("Banned album art on Spotify")
                 return "playingofflinetrack", progress
         logger.debug("Unable to get album art url")
         return "", progress
@@ -136,14 +139,8 @@ def getaverageslices(onlyfiles, progress):
         if col == height:
             row += 1
             col = 0
-    coloraverage = [0, 0, 0]
-    for x in colorarray:
-        for y in x:
-            coloraverage[0] += y[0]
-            coloraverage[1] += y[1]
-            coloraverage[2] += y[2]
-    coloraverage = [int(x / (width * height)) for x in coloraverage]
-    # if about in middle ()
+    coloraverage = np.mean(np.mean(colorarray, axis=0), axis=0)
+    coloraverage = [int(x) for x in coloraverage]
     for x in range(int(width * progress)):
         # here should be instead opposite color of average of whole image
         colorarray[width - 1, x] = complementarycolor(coloraverage)
@@ -228,6 +225,37 @@ def showpause(progress):
     return colorarray
 
 
+def showquestionmark(progress):
+    width = height = int(numberofpixels ** 0.5)
+    if width != 10:
+        return showpause(progress)
+    else:
+        colorarray = np.zeros((height, width, 3), dtype=np.uint8)
+        # make list of points to color for a question mark
+        questionmark = [
+            [1, 4],
+            [1, 5],
+            [1, 6],
+            [1, 7],
+            [2, 7],
+            [3, 7],
+            [4, 4],
+            [4, 5],
+            [4, 6],
+            [4, 7],
+            [5, 4],
+            [6, 4],
+            [8, 4],
+        ]
+        for x in questionmark:
+            colorarray[x[0], x[1]] = [127, 34, 214]
+    if progress > 1 / width:
+        for x in range(int(width * progress)):
+            colorarray[width - 1, x] = [255, 255, 255]
+    logger.debug("returning questionmark")
+    return colorarray
+
+
 # print(colorarray)
 if __name__ == "__main__":
     spotifyobject = initspotipy()
@@ -236,7 +264,14 @@ if __name__ == "__main__":
     while True:
         start_time = time.time()
         try:
-            albumarturl, progress = getspotifyart(spotifyobject)
+            try:
+                albumarturl, progress = getspotifyart(spotifyobject)
+            except (
+                requests.exceptions.ReadTimeout,
+                requests.exceptions.ConnectionError,
+            ):
+                logger.debug("No internet connection")
+                continue
             # for testing
             # raise spotipy.exceptions.SpotifyException(401, 401, "ouch!")
         except (spotipy.exceptions.SpotifyException, requests.exceptions.HTTPError):
@@ -247,18 +282,19 @@ if __name__ == "__main__":
         # could download into directory
         if albumarturl == "offlinetrack":
             if lastprogress != progress:
-                colorarray = showpause(progress)
+                colorarray = showquestionmark(progress)
                 blownup(colorarray)
         elif albumarturl == "playingofflinetrack":
             if lastprogress != progress:
-                colorarray = showpause(progress)
+                colorarray = showquestionmark(progress)
                 blownup(colorarray)
             # make special case for unknown track maybe question mark
         elif albumarturl != "":
-            savetemp(albumarturl, lasturl)
-            onlyfiles = makeslices("temp.jpg")
-            colorarray = getaverageslices(onlyfiles, progress)
-            blownup(colorarray)
+            if lastprogress != progress:
+                savetemp(albumarturl, lasturl)
+                onlyfiles = makeslices("temp.jpg")
+                colorarray = getaverageslices(onlyfiles, progress)
+                blownup(colorarray)
         else:
             if lasturl != albumarturl:
                 colorarray = showpause(progress)
@@ -271,4 +307,5 @@ if __name__ == "__main__":
         # do check for last url here
         # add log for how long loop took
         logger.debug(f"Loop took {round(time.time() - start_time,2)}s")
+        time.sleep(1)
         logger.debug("Looping in check album art loop")
