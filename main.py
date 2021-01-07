@@ -18,6 +18,7 @@ import requests
 import time
 from loguru import logger
 import colorsys
+import math
 
 numberofpixels = 100
 sys.stdout.reconfigure(encoding="utf-8")
@@ -98,6 +99,12 @@ def getspotifyart(spotifyObject):
     try:
         albumarturl = track["item"]["album"]["images"][0]["url"]
     except IndexError:
+        if track:
+            if track["is_playing"]:
+                progress = round_down(
+                    1 / (track["item"]["duration_ms"] / track["progress_ms"]), 1
+                )
+                return "playingofflinetrack", progress
         logger.debug("Unable to get album art url")
         return "", progress
     if artist != "":
