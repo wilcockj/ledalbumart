@@ -55,6 +55,11 @@ def initspotipy():
     return spotifyObject
 
 
+def round_down(n, decimals):
+    multiplier = 10 ** decimals
+    return math.floor(n * multiplier) / multiplier
+
+
 def getspotifyart(spotifyObject):
     track = spotifyObject.current_user_playing_track()
     playback = spotifyObject.current_playback()
@@ -69,13 +74,21 @@ def getspotifyart(spotifyObject):
         ]
         trackprog = playback["progress_ms"]
         if trackprog != 0:
-            progress = 1 / (trackduration / trackprog)
+            progress = round_down(1 / (trackduration / trackprog), 1)
         else:
             progress = 0
         logger.debug(f"{trackprog}, {trackduration}")
         logger.debug(f"Current progress is {progress}")
 
     except TypeError:
+        if track:
+            progress = round_down(
+                1 / (track["item"]["duration_ms"] / track["progress_ms"]), 1
+            )
+            if track["is_playing"]:
+                return "playingofflinetrack", progress
+            else:
+                return "offlinetrack", progress
         logger.debug("Not currently listening to anything")
         return "", progress
     if not playback["is_playing"]:
@@ -123,6 +136,7 @@ def getaverageslices(onlyfiles, progress):
             coloraverage[1] += y[1]
             coloraverage[2] += y[2]
     coloraverage = [int(x / (width * height)) for x in coloraverage]
+    # if about in middle ()
     for x in range(int(width * progress)):
         # here should be instead opposite color of average of whole image
         colorarray[width - 1, x] = complementarycolor(coloraverage)
@@ -168,7 +182,15 @@ def hsv2rgb(h, s, v):
 
 
 def complementarycolor(rgbcolor):
-    return [255 - x for x in rgbcolor]
+    r = rgbcolor[0]
+    g = rgbcolor[1]
+    b = rgbcolor[2]
+    if -10 <= r - g <= 10 and -10 <= r - b <= 10 and -10 <= g - b <= 10:
+        compcolor = [3, 234, 252]
+    else:
+        compcolor = [255 - x for x in rgbcolor]
+
+    return compcolor
 
 
 def showpause(progress):
@@ -185,18 +207,13 @@ def showpause(progress):
                 # set color piece of rainbow in relation to
                 # rowcount 2 = 0
                 # rowcount 8 = 1
-                # rowcount - 2 * 1/7?
+                # rowcount - 2 * 1/7
                 fixedrgb = hsv2rgb((rowcount - 2) * 1 / 7, 1, 1)
                 colorarray[rowcount, colcount] = fixedrgb
-    coloraverage = [0, 0, 0]
-    for x in colorarray:
-        for y in x:
-            coloraverage[0] += y[0]
-            coloraverage[1] += y[1]
-            coloraverage[2] += y[2]
-    coloraverage = [int(x / (width * height)) for x in coloraverage]
-    for x in range(int(width * progress)):
-        colorarray[width - 1, x] = complementarycolor(coloraverage)
+    if progress > 1 / width:
+        for x in range(int(width * progress)):
+            colorarray[width - 1, x] = [255, 255, 255]
+
     # need to do hsv color in order to get rainbow
     # send paused image to led array
     # each row should have same color
@@ -208,6 +225,7 @@ def showpause(progress):
 if __name__ == "__main__":
     spotifyobject = initspotipy()
     lasturl = "start"
+    lastprogress = 99
     while True:
         start_time = time.time()
         try:
@@ -220,14 +238,25 @@ if __name__ == "__main__":
             spotifyobject = initspotipy()
             albumarturl, progress = getspotifyart(spotifyobject)
         # could download into directory
-        if albumarturl != "":
+        if albumarturl == "offlinetrack":
+            if lastprogress != progress:
+                colorarray = showpause(progress)
+                blownup(colorarray)
+        elif albumarturl == "playingofflinetrack":
+            if lastprogress != progress:
+                colorarray = showpause(progress)
+                blownup(colorarray)
+            # make special case for unknown track maybe question mark
+        elif albumarturl != "":
             savetemp(albumarturl, lasturl)
             onlyfiles = makeslices("temp.jpg")
             colorarray = getaverageslices(onlyfiles, progress)
             blownup(colorarray)
         else:
-            colorarray = showpause(progress)
-            blownup(colorarray)
+            if lasturl != albumarturl:
+                colorarray = showpause(progress)
+                blownup(colorarray)
+        lastprogress = progress
         lasturl = albumarturl
         tenbyten = Image.fromarray(colorarray).save("10x10.png")
         img = Image.open("10x10.png")
