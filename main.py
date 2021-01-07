@@ -280,17 +280,13 @@ if __name__ == "__main__":
             spotifyobject = initspotipy()
             albumarturl, progress = getspotifyart(spotifyobject)
         # could download into directory
-        if albumarturl == "offlinetrack":
-            if lastprogress != progress:
-                colorarray = showquestionmark(progress)
-                blownup(colorarray)
-        elif albumarturl == "playingofflinetrack":
+        if albumarturl == "offlinetrack" or albumarturl == "playingofflinetrack":
             if lastprogress != progress:
                 colorarray = showquestionmark(progress)
                 blownup(colorarray)
             # make special case for unknown track maybe question mark
         elif albumarturl != "":
-            if lastprogress != progress:
+            if lastprogress != progress or lasturl != albumarturl:
                 savetemp(albumarturl, lasturl)
                 onlyfiles = makeslices("temp.jpg")
                 colorarray = getaverageslices(onlyfiles, progress)
@@ -303,9 +299,8 @@ if __name__ == "__main__":
         lasturl = albumarturl
         tenbyten = Image.fromarray(colorarray).save("10x10.png")
         img = Image.open("10x10.png")
-        # optional / debug maybe add as commandline option
-        # do check for last url here
-        # add log for how long loop took
+
+        # HERE is where I would iterate through colorarray and set led to those colors
         logger.debug(f"Loop took {round(time.time() - start_time,2)}s")
         time.sleep(1)
         logger.debug("Looping in check album art loop")
