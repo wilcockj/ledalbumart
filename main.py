@@ -32,6 +32,9 @@ logger.add("log.log", rotation="1 week", level="INFO", encoding="utf-8")
 # if can avoid saving the album art image would be ideal
 # for this look at returning in save temp function
 
+# TODO
+# add progress bar on bottom, in red
+
 
 def initspotipy():
     scope = "user-read-private user-read-playback-state user-modify-playback-state"
@@ -55,24 +58,38 @@ def initspotipy():
 def getspotifyart(spotifyObject):
     track = spotifyObject.current_user_playing_track()
     playback = spotifyObject.current_playback()
+
+    progress = 0
+    #'progress_ms' for how far in song
     # print(json.dumps(track, sort_keys=True, indent=4))
     try:
         artist = track["item"]["artists"][0]["name"]
+        trackduration = spotifyObject.audio_features(playback["item"]["id"])[0][
+            "duration_ms"
+        ]
+        trackprog = playback["progress_ms"]
+        if trackprog != 0:
+            progress = 1 / (trackduration / trackprog)
+        else:
+            progress = 0
+        logger.debug(f"{trackprog}, {trackduration}")
+        logger.debug(f"Current progress is {progress}")
+
     except TypeError:
         logger.debug("Not currently listening to anything")
-        return ""
+        return "", progress
     if not playback["is_playing"]:
         logger.debug("Not playing anything on spotify")
-        return ""
+        return "", progress
     song = track["item"]["name"]
     try:
         albumarturl = track["item"]["album"]["images"][0]["url"]
     except IndexError:
         logger.debug("Unable to get album art url")
-        return ""
+        return "", progress
     if artist != "":
         logger.info("Currently playing " + artist + " - " + song)
-    return albumarturl
+    return albumarturl, progress
 
 
 def makeslices(filename):
@@ -81,7 +98,7 @@ def makeslices(filename):
     return files
 
 
-def getaverageslices(onlyfiles):
+def getaverageslices(onlyfiles, progress):
     width = height = int(numberofpixels ** 0.5)
     colorarray = np.zeros((height, width, 3), dtype=np.uint8)
     col = 0
@@ -99,6 +116,8 @@ def getaverageslices(onlyfiles):
         if col == height:
             row += 1
             col = 0
+    for x in range(int(width * progress)):
+        colorarray[width - 1, x] = (255, 0, 0)
     return colorarray
 
 
@@ -140,7 +159,7 @@ def hsv2rgb(h, s, v):
     return tuple(round(i * 255) for i in colorsys.hsv_to_rgb(h, s, v))
 
 
-def showpause():
+def showpause(progress):
     width = height = int(numberofpixels ** 0.5)
     colorarray = np.zeros((height, width, 3), dtype=np.uint8)
     col = 0
@@ -157,7 +176,8 @@ def showpause():
                 # rowcount - 2 * 1/7?
                 fixedrgb = hsv2rgb((rowcount - 2) * 1 / 7, 1, 1)
                 colorarray[rowcount, colcount] = fixedrgb
-
+    for x in range(int(width * progress)):
+        colorarray[width - 1, x] = (255, 0, 0)
     # need to do hsv color in order to get rainbow
     # send paused image to led array
     # each row should have same color
@@ -172,27 +192,23 @@ if __name__ == "__main__":
     while True:
         start_time = time.time()
         try:
-            albumarturl = getspotifyart(spotifyobject)
+            albumarturl, progress = getspotifyart(spotifyobject)
             # for testing
             # raise spotipy.exceptions.SpotifyException(401, 401, "ouch!")
         except (spotipy.exceptions.SpotifyException, requests.exceptions.HTTPError):
             # catches exception when spotify token needs to be refreshed
             logger.warning("Refreshing token")
             spotifyobject = initspotipy()
-            albumarturl = getspotifyart(spotifyobject)
+            albumarturl, progress = getspotifyart(spotifyobject)
         # could download into directory
         if albumarturl != "":
             savetemp(albumarturl, lasturl)
             onlyfiles = makeslices("temp.jpg")
-            colorarray = getaverageslices(onlyfiles)
-            if lasturl != albumarturl:
-                blownup(colorarray)
-            else:
-                logger.debug("Skipping creation of enlarged picture")
+            colorarray = getaverageslices(onlyfiles, progress)
+            blownup(colorarray)
         else:
-            colorarray = showpause()
-            if lasturl != albumarturl:
-                blownup(colorarray)
+            colorarray = showpause(progress)
+            blownup(colorarray)
         lasturl = albumarturl
         tenbyten = Image.fromarray(colorarray).save("10x10.png")
         img = Image.open("10x10.png")
