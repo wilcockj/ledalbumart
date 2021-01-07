@@ -77,7 +77,7 @@ def getspotifyart(spotifyObject):
         ]
         trackprog = playback["progress_ms"]
         if trackprog != 0:
-            progress = round_down(1 / (trackduration / trackprog), 1)
+            progress = round_down(1 / (trackduration / trackprog), 2)
         else:
             progress = 0
         logger.debug(f"{trackprog}, {trackduration}")
@@ -86,7 +86,7 @@ def getspotifyart(spotifyObject):
     except TypeError:
         if track:
             progress = round_down(
-                1 / (track["item"]["duration_ms"] / track["progress_ms"]), 1
+                1 / (track["item"]["duration_ms"] / track["progress_ms"]), 2
             )
             if track["is_playing"]:
                 return "playingofflinetrack", progress
@@ -104,7 +104,7 @@ def getspotifyart(spotifyObject):
         if track:
             if track["is_playing"]:
                 progress = round_down(
-                    1 / (track["item"]["duration_ms"] / track["progress_ms"]), 1
+                    1 / (track["item"]["duration_ms"] / track["progress_ms"]), 2
                 )
                 logger.debug("Banned album art on Spotify")
                 return "playingofflinetrack", progress
