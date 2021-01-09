@@ -64,7 +64,10 @@ def round_down(n, decimals):
 def getspotifyart(spotifyObject):
     track = spotifyObject.current_user_playing_track()
     playback = spotifyObject.current_playback()
-
+    tracktype = track['currently_playing_type']
+    if tracktype == 'episode':
+        #case if podcast
+        return '',0
     progress = 0
     #'progress_ms' for how far in song
     # print(json.dumps(track, sort_keys=True, indent=4))
@@ -248,7 +251,7 @@ def showquestionmark(progress):
             [8, 4],
         ]
         for x in questionmark:
-            colorarray[x[0], x[1]] = [127, 34, 214]
+            colorarray[x[0], x[1] - 1] = [127, 34, 214]
     if progress > 1 / width:
         for x in range(int(width * progress)):
             colorarray[width - 1, x] = [255, 255, 255]
@@ -282,7 +285,10 @@ if __name__ == "__main__":
         # could download into directory
         if albumarturl == "offlinetrack" or albumarturl == "playingofflinetrack":
             if lastprogress != progress:
-                colorarray = showquestionmark(progress)
+                if albumarturl == "playingofflinetrack":
+                    colorarray = showquestionmark(progress)
+                else:
+                    colorarray = showpause(progress)
                 blownup(colorarray)
             # make special case for unknown track maybe question mark
         elif albumarturl != "":
@@ -297,10 +303,10 @@ if __name__ == "__main__":
                 blownup(colorarray)
         lastprogress = progress
         lasturl = albumarturl
-        tenbyten = Image.fromarray(colorarray).save("10x10.png")
-        img = Image.open("10x10.png")
+        #tenbyten = Image.fromarray(colorarray).save("10x10.png")
+        #img = Image.open("10x10.png")
 
         # HERE is where I would iterate through colorarray and set led to those colors
         logger.debug(f"Loop took {round(time.time() - start_time,2)}s")
-        time.sleep(1)
+        time.sleep(5)
         logger.debug("Looping in check album art loop")
