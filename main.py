@@ -21,7 +21,7 @@ import colorsys
 import math
 import board
 import neopixel
-
+# platform.machine = armv7l 
 pixels = neopixel.NeoPixel(board.D18,100)
 numberofpixels = 100
 sys.stdout.reconfigure(encoding="utf-8")
