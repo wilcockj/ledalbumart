@@ -21,8 +21,7 @@ import colorsys
 import math
 import platform
 
-# platform.machine = armv7l
-if platform.machine == "armv7l":
+if platform.machine() == "armv7l":
     import board
     import neopixel
 
@@ -285,7 +284,6 @@ def setleds(colorarray, progress):
     playbackpixels = int(progress * width)
     playbackpixels = list(range(playbackpixels))
     playbackpixels = [x + 90 for x in playbackpixels]
-    print(playbackpixels)
     for row in colorarray:
         for pixel in row:
             # need to mirror image
@@ -309,7 +307,6 @@ def setleds(colorarray, progress):
 
 def overlaypause(colorarray, progress):
     width = height = int(numberofpixels ** 0.5)
-    print(width)
     for rowcount, line in enumerate(colorarray):
         for colcount, pixel in enumerate(line):
             if (colcount % 10 == 3 or colcount % 10 == 6) and (
