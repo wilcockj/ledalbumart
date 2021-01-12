@@ -64,7 +64,10 @@ def round_down(n, decimals):
 def getspotifyart(spotifyObject):
     track = spotifyObject.current_user_playing_track()
     playback = spotifyObject.current_playback()
-    tracktype = track['currently_playing_type']
+    if track:
+        tracktype = track['currently_playing_type']
+    else:
+        tracktype = "unknown"
     if tracktype == 'episode':
         #case if podcast
         return '',0
