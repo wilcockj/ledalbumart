@@ -19,10 +19,16 @@ import time
 from loguru import logger
 import colorsys
 import math
+import board
+import neopixel
 
+pixels = neopixel.NeoPixel(board.D18,100)
 numberofpixels = 100
 sys.stdout.reconfigure(encoding="utf-8")
 logger.add("log.log", rotation="1 week", level="INFO", encoding="utf-8")
+
+# when paused but playing a known song overlay pause symbol on top
+
 
 # image slicing code breaks when there are too many pixels?
 # 64x64 ie 4096 pixels seemed to break
@@ -64,7 +70,10 @@ def round_down(n, decimals):
 def getspotifyart(spotifyObject):
     track = spotifyObject.current_user_playing_track()
     playback = spotifyObject.current_playback()
-    tracktype = track['currently_playing_type']
+    if track:
+        tracktype = track['currently_playing_type']
+    else:
+        tracktype = "unknown"
     if tracktype == 'episode':
         #case if podcast
         return '',0
@@ -95,11 +104,11 @@ def getspotifyart(spotifyObject):
                 return "playingofflinetrack", progress
             else:
                 return "offlinetrack", progress
-        logger.debug("Not currently listening to anything")
         return "", progress
     if not playback["is_playing"]:
         logger.debug("Not playing anything on spotify")
-        return "", progress
+        #if returned pause should just put pause symbol over image
+        return "paused", progress
     song = track["item"]["name"]
     try:
         albumarturl = track["item"]["album"]["images"][0]["url"]
@@ -162,6 +171,8 @@ def savetemp(albumarturl, lasturl):
 
 
 def blownup(colorarray):
+    logger.debug("Not saving blownupimage")
+    return
     pictureside = 600
     blownarray = np.zeros((pictureside, pictureside, 3), dtype=np.uint8)
     # row,col
@@ -258,11 +269,54 @@ def showquestionmark(progress):
     logger.debug("returning questionmark")
     return colorarray
 
+def setleds(colorarray, progress):
+    counter = 0
+    width = 10
+    playbackpixels = int(progress * width)
+    playbackpixels = list(range(playbackpixels))
+    playbackpixels = [x+90 for x in playbackpixels]
+    print(playbackpixels)
+    for row in colorarray:
+        for pixel in row:
+            #need to mirror image
+            #get the tens
+            tens = counter // 10 * 10
+            #reverses row ie 99 would become 90
+            mirroredcounter = 9 -  counter + 2 * tens
+            brightnessdivisor = 10
+            if counter not in playbackpixels:
+                pixels[mirroredcounter] = (pixel[0]/brightnessdivisor,pixel[1]/brightnessdivisor,pixel[2]/brightnessdivisor)
+            else:
+                pixels[mirroredcounter] = (pixel[0]/4,pixel[1]/4,pixel[2]/4)
+            counter += 1
+    
+    logger.debug("finished setting pixels")
+
+def overlaypause(colorarray,progress):
+    width = height = int(numberofpixels ** 0.5) 
+    print(width)
+    for rowcount, line in enumerate(colorarray):
+        for colcount, pixel in enumerate(line):
+            if (colcount % 10 == 3 or colcount % 10 == 6) and (
+                rowcount > 1 and rowcount < 8
+            ):
+                # set color piece of rainbow in relation to
+                # rowcount 2 = 0
+                # rowcount 8 = 1
+                # rowcount - 2 * 1/7
+                fixedrgb = hsv2rgb((rowcount - 2) * 1 / 7, 1, 1)
+                colorarray[rowcount, colcount] = fixedrgb
+    if progress > 1 / width:
+        for x in range(int(width * progress)):
+            colorarray[width - 1, x] = [255, 255, 255]
+    logger.debug("overlaying pause onto album art")
+    return colorarray
 
 # print(colorarray)
 if __name__ == "__main__":
     spotifyobject = initspotipy()
     lasturl = "start"
+    colorarray = []
     lastprogress = 99
     while True:
         start_time = time.time()
@@ -291,6 +345,12 @@ if __name__ == "__main__":
                     colorarray = showpause(progress)
                 blownup(colorarray)
             # make special case for unknown track maybe question mark
+        elif albumarturl == "paused":
+            #overlay pause symbol on picture
+            if len(colorarray) > 0:
+                colorarray = overlaypause(colorarray,progress)
+            else:
+                colorarray = showpause(progress)
         elif albumarturl != "":
             if lastprogress != progress or lasturl != albumarturl:
                 savetemp(albumarturl, lasturl)
@@ -307,6 +367,7 @@ if __name__ == "__main__":
         #img = Image.open("10x10.png")
 
         # HERE is where I would iterate through colorarray and set led to those colors
+        setleds(colorarray, progress)
         logger.debug(f"Loop took {round(time.time() - start_time,2)}s")
-        time.sleep(5)
+        time.sleep(2)
         logger.debug("Looping in check album art loop")
