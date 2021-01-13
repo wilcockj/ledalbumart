@@ -332,6 +332,8 @@ def main():
     lastprogress = 99
     while True:
         start_time = time.time()
+
+        logger.debug("Starting Loop")
         try:
             try:
                 albumarturl, progress = getspotifyart(spotifyobject)
@@ -390,7 +392,7 @@ def main():
             setleds(colorarray, progress)
         logger.debug(f"Loop took {round(time.time() - start_time,2)}s")
         time.sleep(2)
-        logger.debug("Looping in check album art loop")
+        print()
 
 
 if __name__ == "__main__":
