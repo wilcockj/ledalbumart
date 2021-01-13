@@ -301,7 +301,6 @@ def setleds(colorarray, progress):
             else:
                 pixels[mirroredcounter] = (pixel[0] / 4, pixel[1] / 4, pixel[2] / 4)
             counter += 1
-
     logger.debug("finished setting pixels")
 
 
