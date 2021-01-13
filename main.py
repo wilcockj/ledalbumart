@@ -20,6 +20,8 @@ from loguru import logger
 import colorsys
 import math
 import platform
+import atexit
+
 
 if platform.machine() == "armv7l":
     import board
@@ -48,6 +50,16 @@ logger.add("log.log", rotation="1 week", level="INFO", encoding="utf-8")
 
 # TODO
 # Make progress bar opposite color of average color of album art in order to contrast
+
+
+def resetboard():
+    if onraspi:
+        for x in range(100):
+            pixels[x] = (0, 0, 0)
+    logger.debug("Finished Board reset function")
+
+
+atexit.register(resetboard)
 
 
 def initspotipy():
@@ -96,7 +108,7 @@ def getspotifyart(spotifyObject):
         ]
         trackprog = playback["progress_ms"]
         if trackprog != 0:
-            progress = round_down(1 / (trackduration / trackprog), 2)
+            progress = round_down(1 / (trackduration / trackprog), 1)
         else:
             progress = 0
         logger.debug(f"{trackprog}, {trackduration}")
@@ -105,7 +117,7 @@ def getspotifyart(spotifyObject):
     except TypeError:
         if track:
             progress = round_down(
-                1 / (track["item"]["duration_ms"] / track["progress_ms"]), 2
+                1 / (track["item"]["duration_ms"] / track["progress_ms"]), 1
             )
             if track["is_playing"]:
                 return "playingofflinetrack", progress
@@ -123,7 +135,7 @@ def getspotifyart(spotifyObject):
         if track:
             if track["is_playing"]:
                 progress = round_down(
-                    1 / (track["item"]["duration_ms"] / track["progress_ms"]), 2
+                    1 / (track["item"]["duration_ms"] / track["progress_ms"]), 1
                 )
                 logger.debug("Banned album art on Spotify")
                 return "playingofflinetrack", progress
@@ -135,35 +147,22 @@ def getspotifyart(spotifyObject):
 
 
 def makeslices(filename):
-    files = image_slicer.slice(filename, numberofpixels, save=False)
+    im = Image.open("temp.jpg")
+    newsize = (10, 10)
+    im = im.resize(newsize)
+    logger.debug("Resizing temp image")
     # image_slicer.save_tiles(files, directory="./slices", prefix="slice", format="png")
-    return files
+    return np.array(im)
 
 
-def getaverageslices(onlyfiles, progress):
+def addplaybackindicator(resizedimage, progress):
     width = height = int(numberofpixels ** 0.5)
-    colorarray = np.zeros((height, width, 3), dtype=np.uint8)
-    col = 0
-    row = 0
-    counter = 0
-    for file in onlyfiles:
-        counter += 1
-        data = np.asarray(file.image)
-        # print(data)
-        avg_of_row = np.average(data, axis=0)
-        avg_color = np.average(avg_of_row, axis=0)
-        # print(avg_color)
-        colorarray[row, col] = avg_color
-        col += 1
-        if col == height:
-            row += 1
-            col = 0
-    coloraverage = np.mean(np.mean(colorarray, axis=0), axis=0)
+    coloraverage = np.mean(np.mean(resizedimage, axis=0), axis=0)
     coloraverage = [int(x) for x in coloraverage]
     for x in range(int(width * progress)):
         # here should be instead opposite color of average of whole image
-        colorarray[width - 1, x] = complementarycolor(coloraverage)
-    return colorarray
+        resizedimage[width - 1, x] = complementarycolor(coloraverage)
+    return resizedimage
 
 
 def savetemp(albumarturl, lasturl):
@@ -325,7 +324,7 @@ def overlaypause(colorarray, progress):
 
 
 # print(colorarray)
-if __name__ == "__main__":
+def main():
     spotifyobject = initspotipy()
     lasturl = "start"
     colorarray = []
@@ -350,14 +349,17 @@ if __name__ == "__main__":
             albumarturl, progress = getspotifyart(spotifyobject)
         # could download into directory
         if albumarturl == "offlinetrack" or albumarturl == "playingofflinetrack":
+            logger.debug("Spotify Offline Track")
             if lastprogress != progress:
                 if albumarturl == "playingofflinetrack":
                     colorarray = showquestionmark(progress)
                 else:
                     colorarray = showpause(progress)
-                blownup(colorarray)
+            else:
+                colorarray = showquestionmark(progress)
             # make special case for unknown track maybe question mark
         elif albumarturl == "paused":
+            logger.debug("Spotify Paused")
             # overlay pause symbol on picture
             if len(colorarray) > 0:
                 colorarray = overlaypause(colorarray, progress)
@@ -365,14 +367,18 @@ if __name__ == "__main__":
                 colorarray = showpause(progress)
         elif albumarturl != "":
             if lastprogress != progress or lasturl != albumarturl:
+                logger.debug("New song or new progress to be graphed")
                 savetemp(albumarturl, lasturl)
-                onlyfiles = makeslices("temp.jpg")
-                colorarray = getaverageslices(onlyfiles, progress)
-                blownup(colorarray)
+                # DON'T NEED TO RESIZE EVERYTIME PROGRESS CHANGES
+                resized = makeslices("temp.jpg")
+                colorarray = addplaybackindicator(resized, progress)
+            elif lastprogress != progress:
+                # need function for overlaying playback on color array
+                colorarray = addplaybackindicator(colorarray, progress)
         else:
             if lasturl != albumarturl:
                 colorarray = showpause(progress)
-                blownup(colorarray)
+        blownup(colorarray)
         lastprogress = progress
         lasturl = albumarturl
         # tenbyten = Image.fromarray(colorarray).save("10x10.png")
@@ -384,3 +390,7 @@ if __name__ == "__main__":
         logger.debug(f"Loop took {round(time.time() - start_time,2)}s")
         time.sleep(2)
         logger.debug("Looping in check album art loop")
+
+
+if __name__ == "__main__":
+    main()
