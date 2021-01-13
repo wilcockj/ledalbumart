@@ -20,6 +20,8 @@ from loguru import logger
 import colorsys
 import math
 import platform
+import atexit
+
 
 if platform.machine() == "armv7l":
     import board
@@ -48,6 +50,16 @@ logger.add("log.log", rotation="1 week", level="INFO", encoding="utf-8")
 
 # TODO
 # Make progress bar opposite color of average color of album art in order to contrast
+
+
+def resetboard():
+    if onraspi:
+        for x in range(100):
+            pixels[x] = (0, 0, 0)
+    logger.debug("Finished Board reset function")
+
+
+atexit.register(resetboard)
 
 
 def initspotipy():
@@ -143,7 +155,7 @@ def makeslices(filename):
     return np.array(im)
 
 
-def getaverageslices(resizedimage, progress):
+def addplaybackindicator(resizedimage, progress):
     width = height = int(numberofpixels ** 0.5)
     coloraverage = np.mean(np.mean(resizedimage, axis=0), axis=0)
     coloraverage = [int(x) for x in coloraverage]
@@ -338,14 +350,17 @@ def main():
             albumarturl, progress = getspotifyart(spotifyobject)
         # could download into directory
         if albumarturl == "offlinetrack" or albumarturl == "playingofflinetrack":
+            logger.debug("Spotify Offline Track")
             if lastprogress != progress:
                 if albumarturl == "playingofflinetrack":
                     colorarray = showquestionmark(progress)
                 else:
                     colorarray = showpause(progress)
-                blownup(colorarray)
+            else:
+                colorarray = showquestionmark(progress)
             # make special case for unknown track maybe question mark
         elif albumarturl == "paused":
+            logger.debug("Spotify Paused")
             # overlay pause symbol on picture
             if len(colorarray) > 0:
                 colorarray = overlaypause(colorarray, progress)
@@ -353,14 +368,18 @@ def main():
                 colorarray = showpause(progress)
         elif albumarturl != "":
             if lastprogress != progress or lasturl != albumarturl:
+                logger.debug("New song or new progress to be graphed")
                 savetemp(albumarturl, lasturl)
+                # DON'T NEED TO RESIZE EVERYTIME PROGRESS CHANGES
                 resized = makeslices("temp.jpg")
-                colorarray = getaverageslices(resized, progress)
-                blownup(colorarray)
+                colorarray = addplaybackindicator(resized, progress)
+            elif lastprogress != progress:
+                # need function for overlaying playback on color array
+                colorarray = addplaybackindicator(colorarray, progress)
         else:
             if lasturl != albumarturl:
                 colorarray = showpause(progress)
-                blownup(colorarray)
+        blownup(colorarray)
         lastprogress = progress
         lasturl = albumarturl
         # tenbyten = Image.fromarray(colorarray).save("10x10.png")
