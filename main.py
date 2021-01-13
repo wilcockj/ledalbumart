@@ -150,7 +150,7 @@ def makeslices(filename):
     im = Image.open("temp.jpg")
     newsize = (10, 10)
     im = im.resize(newsize)
-    logger.debug("Resizing temp image")
+    logger.debug("Resized temp image")
     # image_slicer.save_tiles(files, directory="./slices", prefix="slice", format="png")
     return np.array(im)
 
