@@ -97,7 +97,7 @@ def getspotifyart(spotifyObject):
         ]
         trackprog = playback["progress_ms"]
         if trackprog != 0:
-            progress = round_down(1 / (trackduration / trackprog), 2)
+            progress = round_down(1 / (trackduration / trackprog), 1)
         else:
             progress = 0
         logger.debug(f"{trackprog}, {trackduration}")
@@ -106,7 +106,7 @@ def getspotifyart(spotifyObject):
     except TypeError:
         if track:
             progress = round_down(
-                1 / (track["item"]["duration_ms"] / track["progress_ms"]), 2
+                1 / (track["item"]["duration_ms"] / track["progress_ms"]), 1
             )
             if track["is_playing"]:
                 return "playingofflinetrack", progress
@@ -124,7 +124,7 @@ def getspotifyart(spotifyObject):
         if track:
             if track["is_playing"]:
                 progress = round_down(
-                    1 / (track["item"]["duration_ms"] / track["progress_ms"]), 2
+                    1 / (track["item"]["duration_ms"] / track["progress_ms"]), 1
                 )
                 logger.debug("Banned album art on Spotify")
                 return "playingofflinetrack", progress
@@ -136,35 +136,22 @@ def getspotifyart(spotifyObject):
 
 
 def makeslices(filename):
-    files = image_slicer.slice(filename, numberofpixels, save=False)
+    im = Image.open("temp.jpg")
+    newsize = (10, 10)
+    im = im.resize(newsize)
+    logger.debug("Resizing temp image")
     # image_slicer.save_tiles(files, directory="./slices", prefix="slice", format="png")
-    return files
+    return np.array(im)
 
 
-def getaverageslices(onlyfiles, progress):
+def getaverageslices(resizedimage, progress):
     width = height = int(numberofpixels ** 0.5)
-    colorarray = np.zeros((height, width, 3), dtype=np.uint8)
-    col = 0
-    row = 0
-    counter = 0
-    for file in onlyfiles:
-        counter += 1
-        data = np.asarray(file.image)
-        # print(data)
-        avg_of_row = np.average(data, axis=0)
-        avg_color = np.average(avg_of_row, axis=0)
-        # print(avg_color)
-        colorarray[row, col] = avg_color
-        col += 1
-        if col == height:
-            row += 1
-            col = 0
-    coloraverage = np.mean(np.mean(colorarray, axis=0), axis=0)
+    coloraverage = np.mean(np.mean(resizedimage, axis=0), axis=0)
     coloraverage = [int(x) for x in coloraverage]
     for x in range(int(width * progress)):
         # here should be instead opposite color of average of whole image
-        colorarray[width - 1, x] = complementarycolor(coloraverage)
-    return colorarray
+        resizedimage[width - 1, x] = complementarycolor(coloraverage)
+    return resizedimage
 
 
 def savetemp(albumarturl, lasturl):
@@ -329,7 +316,7 @@ def overlaypause(colorarray, progress):
 
 
 # print(colorarray)
-if __name__ == "__main__":
+def main():
     spotifyobject = initspotipy()
     lasturl = "start"
     colorarray = []
@@ -370,8 +357,8 @@ if __name__ == "__main__":
         elif albumarturl != "":
             if lastprogress != progress or lasturl != albumarturl:
                 savetemp(albumarturl, lasturl)
-                onlyfiles = makeslices("temp.jpg")
-                colorarray = getaverageslices(onlyfiles, progress)
+                resized = makeslices("temp.jpg")
+                colorarray = getaverageslices(resized, progress)
                 blownup(colorarray)
         else:
             if lasturl != albumarturl:
@@ -388,3 +375,7 @@ if __name__ == "__main__":
         logger.debug(f"Loop took {round(time.time() - start_time,2)}s")
         time.sleep(2)
         logger.debug("Looping in check album art loop")
+
+
+if __name__ == "__main__":
+    main()
